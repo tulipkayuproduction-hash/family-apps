@@ -17,7 +17,7 @@
 }}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.5 Figtree,system-ui,sans-serif;overflow-x:hidden}
 h1,h2,h3{font-family:Bricolage,Figtree,sans-serif;line-height:1.15;margin:0;font-weight:700}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
@@ -174,3 +174,17 @@ dialog#sheet::backdrop{background:rgba(26,19,15,.5)}
 .addline{display:flex;gap:8px;margin:8px 0}
 .addline input{flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);min-height:44px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+:root[data-size=l]{font-size:112.5%}
+:root[data-size=xl]{font-size:125%}
+.top-acts{display:flex;align-items:center;gap:4px}
+.top-acts .iconbtn{color:var(--ink2)}
+.lbl{margin:10px 0 4px}
+fieldset.swatches{border:0;padding:0;margin:0 0 13px;display:flex;flex-wrap:wrap;gap:6px}
+fieldset.swatches legend{font-size:.875rem;font-weight:600;margin-bottom:6px;padding:0}
+.sw{position:relative;cursor:pointer}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}
+.sw span{width:36px;height:36px;border-radius:50%;background:var(--c);color:#fff;font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center;outline:3px solid transparent;outline-offset:2px}
+.sw input:checked+span{outline-color:var(--ink)}
+.sw input:focus-visible+span{outline-color:var(--tulip)}
+.tog.autoloc{align-items:flex-start;background:var(--leaf-soft);border-radius:12px;padding:12px;margin:0 0 12px}
+.tog.autoloc input{margin-top:2px;flex:none}
