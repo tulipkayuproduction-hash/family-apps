@@ -65,6 +65,8 @@ class DemoStore extends Base {
       { uid: 'u2', lat: 3.0733, lng: 101.5185, acc: 12, at: now - 240000, name: 'Ibu' },
       { uid: 'u3', lat: 3.0456, lng: 101.4471, acc: 25, at: now - 2400000, name: 'Aiman' }
     ];
+    let pr = null; try { pr = JSON.parse(localStorage.getItem('tk-demo-prof')); } catch {}
+    if (pr) { this.user.name = this.members[0].name = pr.name; this.members[0].color = pr.color; this.family.name = pr.family; }
     this.phase = 'ready';
   }
   save() { try { localStorage.setItem('tk-demo', JSON.stringify(this.state)); } catch {} this.emit(); }
@@ -74,10 +76,12 @@ class DemoStore extends Base {
   setShared(col, id, shared) { this.update(col, id, { _shared: shared }); }
   setLocation(loc) { this.locations = this.locations.filter(l => l.uid !== 'u1').concat({ uid: 'u1', name: 'Ayah', ...loc }); this.emit(); }
   clearLocation() { this.locations = this.locations.filter(l => l.uid !== 'u1'); this.emit(); }
-  async updateProfile(name) { this.user.name = name; this.members[0].name = name; this.emit(); }
+  async updateProfile(name, color) { this.user.name = name; Object.assign(this.members[0], { name, ...(color ? { color } : {}) }); this.saveProf(); }
+  async updateFamilyName(name) { this.family.name = name; this.saveProf(); }
+  saveProf() { try { localStorage.setItem('tk-demo-prof', JSON.stringify({ name: this.user.name, color: this.members[0].color, family: this.family.name })); } catch {} this.emit(); }
   async regenerateInvite() { return this.family.inviteCode; }
   async enablePush() { throw new Error('Notifikasi push memerlukan Firebase. Sambungkan Firebase dahulu.'); }
-  async signOut() { try { localStorage.removeItem('tk-demo'); } catch {} location.reload(); }
+  async signOut() { try { localStorage.removeItem('tk-demo'); localStorage.removeItem('tk-demo-prof'); } catch {} location.reload(); }
 }
 
 // ---------- Firebase ----------
@@ -178,11 +182,14 @@ class FirebaseStore extends Base {
     if (old) await f.deleteDoc(f.doc(this.db, 'invites', old));
     return code;
   }
-  async updateProfile(name) {
+  async updateFamilyName(name) { await this.fb.updateDoc(this.fb.doc(this.db, 'families', this.fid), { name }); }
+  async updateProfile(name, color) {
     const f = this.fb, uid = this.user.uid;
     this.user.name = name;
     await f.updateProfile(this.auth.currentUser, { displayName: name });
-    await f.updateDoc(f.doc(this.db, 'families', this.fid, 'members', uid), { name });
+    await f.updateDoc(f.doc(this.db, 'families', this.fid, 'members', uid), color ? { name, color } : { name });
+    const loc = this.locations.find(l => l.uid === uid);
+    if (loc) await f.updateDoc(f.doc(this.db, 'families', this.fid, 'locations', uid), { name });
     await f.setDoc(f.doc(this.db, 'users', uid), { name }, { merge: true });
     this.emit();
   }

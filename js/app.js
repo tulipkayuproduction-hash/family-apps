@@ -1,4 +1,4 @@
-import { createStore } from './store.js';
+import { createStore, COLORS } from './store.js';
 import { DAY, ymd, ymOf, combine, startOfDay, addDays, shiftYm, daysUntil, daysInMonth, parseYmd, nextOccurrence, occurrences, commitmentMonth, expenseMonth, agenda, taskBuckets, nextTaskDue, shouldSendLocation, ago, rm } from './logic.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -10,6 +10,7 @@ const I = {
   wallet: '<path d="M3 8a3 3 0 0 1 3-3h12v3M3 8v10a3 3 0 0 0 3 3h15V8z"/><circle cx="16.500" cy="14.500" r="1.200"/>',
   people: '<circle cx="9" cy="8" r="3.500"/><path d="M2.500 20c.5-4 3-6 6.500-6s6 2 6.500 6"/><path d="M16 4.800a3.500 3.500 0 0 1 0 6.400M18.500 14.500c1.700.9 2.700 2.800 3 5.500"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', check: '<path d="M5 12.500l4.500 4.500L19 7"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.400 15a1.700 1.700 0 0 0 .3 1.800l.1.100a2 2 0 1 1-2.800 2.800l-.1-.1a1.700 1.700 0 0 0-1.800-.3 1.700 1.700 0 0 0-1 1.500V21a2 2 0 1 1-4 0v-.1a1.700 1.700 0 0 0-1.100-1.500 1.700 1.700 0 0 0-1.800.3l-.1.100a2 2 0 1 1-2.800-2.800l.1-.1a1.700 1.700 0 0 0 .3-1.800 1.700 1.700 0 0 0-1.500-1H3a2 2 0 1 1 0-4h.1a1.700 1.700 0 0 0 1.500-1.100 1.700 1.700 0 0 0-.3-1.800l-.1-.1a2 2 0 1 1 2.800-2.800l.1.100a1.700 1.700 0 0 0 1.800.3H9a1.700 1.700 0 0 0 1-1.500V3a2 2 0 1 1 4 0v.1a1.700 1.700 0 0 0 1 1.500 1.700 1.700 0 0 0 1.800-.3l.1-.1a2 2 0 1 1 2.800 2.800l-.1.100a1.700 1.700 0 0 0-.3 1.800V9a1.700 1.700 0 0 0 1.500 1H21a2 2 0 1 1 0 4h-.1a1.700 1.700 0 0 0-1.500 1z"/>',
   left: '<path d="M15 5l-7 7 7 7"/>', right: '<path d="M9 5l7 7-7 7"/>'
 };
 const ico = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
@@ -28,6 +29,9 @@ const load = k => { try { return localStorage.getItem(k); } catch { return null;
 const save = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
 function setTheme(t) { if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t; save('tk-theme', t); }
 setTheme(load('tk-theme') || 'auto');
+function setSize(z) { if (z === 'm') document.documentElement.removeAttribute('data-size'); else document.documentElement.dataset.size = z; save('tk-size', z); }
+setSize(load('tk-size') || 'm');
+const weekStart = () => Number(load('tk-week') || 0);
 
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2600); }
 const member = uid => store.members.find(m => m.uid === uid);
@@ -145,11 +149,12 @@ function homeView() {
 
 function calView() {
   const ym = ui.calYm, [y, m] = ym.split('-').map(Number), first = new Date(y, m - 1, 1);
-  const lead = first.getDay(), start = addDays(first.getTime(), -lead), cells = Math.ceil((lead + daysInMonth(y, m - 1)) / 7) * 7;
+  const ws = weekStart(), lead = (first.getDay() - ws + 7) % 7, start = addDays(first.getTime(), -lead), cells = Math.ceil((lead + daysInMonth(y, m - 1)) / 7) * 7;
   const end = addDays(start, cells) - 1, items = agenda(store.state, start, end), by = {};
   items.forEach(a => (by[ymd(a.t)] ||= []).push(a));
   const todayS = ymd(Date.now());
-  let g = ['Ahd', 'Isn', 'Sel', 'Rab', 'Kha', 'Jum', 'Sab'].map(d => `<div class="dow">${d}</div>`).join('');
+  const DOW = ['Ahd', 'Isn', 'Sel', 'Rab', 'Kha', 'Jum', 'Sab'];
+  let g = [...DOW.slice(ws), ...DOW.slice(0, ws)].map(d => `<div class="dow">${d}</div>`).join('');
   for (let i = 0; i < cells; i++) {
     const t = addDays(start, i), k = ymd(t), kinds = [...new Set((by[k] || []).map(a => a.kind))].slice(0, 3);
     const label = `${fmtD(t, { day: 'numeric', month: 'long' })}, ${(by[k] || []).length} perkara`;
@@ -242,13 +247,13 @@ function familyView() {
     <p class="total" style="font-size:1.6rem;overflow-wrap:anywhere">${esc(store.family.inviteCode || '-')}</p>
     <div class="chips"><button class="btn sm ghost" data-act="copy" data-v="${esc(store.family.inviteCode || '')}">Salin kod</button><button class="btn sm ghost" data-act="invite-new">Jana kod baharu</button></div>`;
   // Lokasi
-  const me = store.user.uid, sharing = !!locWatch;
-  const others = store.locations;
+  const sharing = locWatch !== null, auto = locAuto(), others = store.locations;
   return top + `<div id="map-host"></div>
-    ${sharing ? `<p class="small" style="margin:0 0 8px">Lokasi anda sedang dikongsi${locUntil() ? ` hingga ${fmtT(locUntil())}` : ''}. Ia dikemas kini selagi aplikasi ini terbuka.</p><button class="btn ghost" data-act="loc-stop">Berhenti berkongsi</button>`
+    ${autoToggle()}
+    ${auto ? '' : sharing ? `<p class="small" style="margin:0 0 8px">Lokasi anda sedang dikongsi${locUntil() ? ` hingga ${fmtT(locUntil())}` : ''}. Ia dikemas kini selagi aplikasi ini terbuka.</p><button class="btn ghost" data-act="loc-stop">Berhenti berkongsi</button>`
       : `<p class="small muted" style="margin:0 0 8px">Lokasi anda tidak dikongsi. Lokasi hanya dikemas kini ketika aplikasi terbuka di skrin.</p><div class="chips"><button class="btn sm" data-act="loc-start" data-h="1">Kongsi 1 jam</button><button class="btn sm ghost" data-act="loc-start" data-h="8">8 jam</button><button class="btn sm ghost" data-act="loc-start" data-h="0">Sehingga dimatikan</button></div>`}
     <h2 class="sec">Ahli keluarga</h2>
-    <ul class="rows">${store.members.map(m => { const l = others.find(x => x.uid === m.uid); return `<li class="row">${avatar(m.uid, false)}<div class="main"><div class="t">${esc(m.name)}</div><div class="s">${l ? `Dikemas kini ${ago(l.at)}` : 'Tidak berkongsi lokasi'}</div></div>${l ? `<a class="link" href="https://www.google.com/maps?q=${l.lat},${l.lng}" target="_blank" rel="noopener">Buka peta</a>` : ''}</li>`; }).join('')}</ul>`;
+    <ul class="rows">${store.members.map(m => { const l = others.find(x => x.uid === m.uid); return `<li class="row">${avatar(m.uid, false)}<div class="main"><div class="t">${esc(m.name)}</div><div class="s">${l ? (Date.now() - l.at < 180000 ? '<span class="tag ok">Aktif sekarang</span>' : `Kali terakhir ${ago(l.at)}`) + (l.auto ? ' <span class="tag">Automatik</span>' : '') : 'Tidak berkongsi lokasi'}</div></div>${l ? `<a class="link" href="https://www.google.com/maps?q=${l.lat},${l.lng}" target="_blank" rel="noopener">Buka peta</a>` : ''}</li>`; }).join('')}</ul>`;
 }
 
 // ---------- Peta ----------
@@ -276,8 +281,21 @@ function mountMap() {
 }
 
 // ---------- Lokasi langsung ----------
-let locWatch = null, lastSent = null;
+let locWatch = null, lastSent = null, locBeat = null;
 const locUntil = () => Number(load('tk-loc-until') || 0);
+const locAuto = () => load('tk-loc-auto') === '1';
+const autoToggle = () => `<label class="tog autoloc" for="loc-auto"><input type="checkbox" id="loc-auto" data-act="loc-auto" ${locAuto() ? 'checked' : ''}><span><b>Kongsi lokasi secara automatik</b><br><span class="small muted">Lokasi dikongsi sendiri setiap kali aplikasi dibuka pada peranti ini, tanpa perlu tekan butang. Ia berhenti dikemas kini apabila aplikasi ditutup atau skrin dikunci.</span></span></label>`;
+function sendFix(p) {
+  if (locUntil() && Date.now() > locUntil()) return stopLoc();
+  const cur = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy), at: Date.now() };
+  if (shouldSendLocation(lastSent, cur)) { lastSent = cur; store.setLocation({ ...cur, auto: locAuto() }); }
+}
+function locError(e) {
+  if (e.code === 1) { save('tk-loc-auto', null); toast('Akses lokasi disekat. Benarkan lokasi untuk aplikasi ini dalam tetapan telefon, kemudian hidupkan semula.'); stopLoc(true); }
+  else toast('Lokasi tidak dapat dikesan sekarang.');
+}
+// Hantar kedudukan segar sekarang (bila aplikasi dibuka semula, dan setiap 2 minit walaupun tidak bergerak).
+function pingNow() { if (locWatch === null || document.hidden) return; lastSent = null; navigator.geolocation.getCurrentPosition(sendFix, () => {}, { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 }); }
 function startLoc(hours) {
   if (!navigator.geolocation) return toast('Peranti ini tidak menyokong lokasi.');
   save('tk-loc', '1'); save('tk-loc-until', hours ? String(Date.now() + hours * 3600000) : null);
@@ -285,17 +303,24 @@ function startLoc(hours) {
 }
 function beginWatch() {
   if (locWatch !== null) return;
+  if (!navigator.geolocation) return;
   lastSent = null;
-  locWatch = navigator.geolocation.watchPosition(p => {
-    if (locUntil() && Date.now() > locUntil()) return stopLoc();
-    const cur = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy), at: Date.now() };
-    if (shouldSendLocation(lastSent, cur)) { lastSent = cur; store.setLocation(cur); }
-  }, e => { toast(e.code === 1 ? 'Akses lokasi disekat. Benarkan dalam tetapan pelayar.' : 'Lokasi tidak dapat dikesan sekarang.'); if (e.code === 1) stopLoc(); }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 });
+  locWatch = navigator.geolocation.watchPosition(sendFix, locError, { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 });
+  clearInterval(locBeat); locBeat = setInterval(() => { lastSent && Date.now() - lastSent.at >= 115000 && pingNow(); }, 30000);
 }
-function stopLoc() {
+function stopLoc(quiet) {
   if (locWatch !== null) navigator.geolocation.clearWatch(locWatch);
-  locWatch = null; save('tk-loc', null); save('tk-loc-until', null);
+  clearInterval(locBeat); locWatch = null;
+  if (locAuto() && quiet !== true) { save('tk-loc-auto', null); toast('Perkongsian automatik dimatikan'); }
+  save('tk-loc', null); save('tk-loc-until', null);
   store.clearLocation(); render();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && store?.phase === 'ready') { if (locWatch === null) resumeLoc(); else pingNow(); } });
+function resumeLoc() {
+  if (locWatch !== null || store.phase !== 'ready') return;
+  if (locAuto()) { save('tk-loc-until', null); beginWatch(); schedule(); return; }
+  if (!load('tk-loc')) return;
+  if (locUntil() && Date.now() > locUntil()) { save('tk-loc', null); save('tk-loc-until', null); store.clearLocation(); } else { beginWatch(); schedule(); }
 }
 
 // ---------- Peringatan tempatan (ketika aplikasi terbuka) ----------
@@ -315,17 +340,31 @@ function checkDue() {
 
 // ---------- Tetapan ----------
 function openSettings() {
-  const theme = load('tk-theme') || 'auto', standalone = matchMedia('(display-mode: standalone)').matches;
-  const perm = window.Notification ? Notification.permission : 'unsupported';
+  const theme = load('tk-theme') || 'auto', size = load('tk-size') || 'm', ws = weekStart(), standalone = matchMedia('(display-mode: standalone)').matches;
+  const perm = window.Notification ? Notification.permission : 'unsupported', me = member(store.user.uid), myColor = me?.color || COLORS[0];
+  const opt = (act, cur, list) => `<div class="chips" role="group">${list.map(([k, l]) => `<button type="button" class="chip" data-act="${act}" data-k="${k}" aria-pressed="${String(cur) === String(k)}">${l}</button>`).join('')}</div>`;
   openSheet(`${head('Tetapan')}
-    <form data-profile><label class="f" for="pname"><span>Nama anda</span><input id="pname" name="name" value="${esc(store.user.name)}" required></label><button class="btn ghost sm">Simpan nama</button></form>
-    <h3 class="sec">Tema</h3><div class="chips">${[['auto', 'Ikut peranti'], ['light', 'Cerah'], ['dark', 'Gelap']].map(([k, l]) => `<button class="chip" data-act="theme" data-k="${k}" aria-pressed="${theme === k}">${l}</button>`).join('')}</div>
+    <h3 class="sec">Profil</h3>
+    <form data-profile>
+      <label class="f" for="pname"><span>Nama paparan</span><input id="pname" name="name" value="${esc(store.user.name)}" maxlength="30" required autocomplete="nickname"></label>
+      <fieldset class="f swatches"><legend>Warna avatar</legend>${COLORS.map((c, i) => `<label class="sw" style="--c:${c}"><input type="radio" name="color" value="${c}" ${c === myColor ? 'checked' : ''} aria-label="Warna ${i + 1}"><span>${esc(initials(store.user.name))}</span></label>`).join('')}</fieldset>
+      <button class="btn sm">Simpan profil</button>
+    </form>
+    <h3 class="sec">Keluarga</h3>
+    <form data-famname><label class="f" for="fname"><span>Nama keluarga (dilihat semua ahli)</span><input id="fname" name="name" value="${esc(store.family?.name || '')}" maxlength="40" required></label><button class="btn sm ghost">Simpan nama keluarga</button></form>
+    <h3 class="sec">Paparan</h3>
+    <p class="small muted lbl">Mod</p>${opt('theme', theme, [['auto', 'Ikut peranti'], ['light', 'Cerah'], ['dark', 'Gelap']])}
+    <p class="small muted lbl">Saiz teks</p>${opt('size', size, [['m', 'Biasa'], ['l', 'Besar'], ['xl', 'Lebih besar']])}
+    <p class="small muted lbl">Minggu bermula pada</p>${opt('week', ws, [[0, 'Ahad'], [1, 'Isnin']])}
+    <p class="small muted">Tetapan paparan disimpan pada peranti ini sahaja.</p>
+    <h3 class="sec">Lokasi</h3>${autoToggle()}
     <h3 class="sec">Notifikasi</h3><p class="small muted">${perm === 'granted' ? 'Notifikasi dibenarkan pada peranti ini.' : 'Benarkan notifikasi untuk menerima peringatan walaupun aplikasi ditutup.'}</p><button class="btn sm ghost" data-act="push">Aktifkan notifikasi</button>
     ${standalone ? '' : `<h3 class="sec">Pasang aplikasi</h3><p class="small muted">Android: tekan butang di bawah atau menu pelayar, kemudian "Pasang aplikasi". iPhone: buka dalam Safari, tekan Kongsi, kemudian "Add to Home Screen".</p>${installEvt ? '<button class="btn sm ghost" data-act="install">Pasang sekarang</button>' : ''}`}
     <h3 class="sec">Data</h3><div class="chips"><button class="btn sm ghost" data-act="export">Muat turun salinan (JSON)</button></div>
     ${store.demo ? '' : `<p class="small muted">ID keluarga (untuk Apps Script):</p><p class="small" style="overflow-wrap:anywhere"><code>${esc(store.family?.id)}</code> <button class="link" data-act="copy" data-v="${esc(store.family?.id)}">Salin</button></p>`}
     <div class="acts" style="margin-top:18px"><button class="btn danger" data-act="signout">${store.demo ? 'Tetapkan semula demo' : 'Log keluar'}</button></div>`);
 }
+function refreshSettings() { const d = sheet().scrollTop; openSettings(); sheet().scrollTop = d; }
 function openBudget() {
   const b = Object.fromEntries(store.state.budgets.map(x => [x.category, x.amount]));
   openSheet(`${head('Bajet bulanan')}<form data-budget>${CATS.map(c => `<label class="f" for="b_${esc(c)}"><span>${esc(c)}</span><input id="b_${esc(c)}" type="number" min="0" step="1" inputmode="numeric" name="${esc(c)}" value="${esc(b[c] ?? '')}" placeholder="Tiada bajet"></label>`).join('')}<div class="acts"><span></span><button class="btn">Simpan bajet</button></div></form>`);
@@ -372,10 +411,17 @@ const actions = {
   budget: openBudget,
   'loc-start'(e) { startLoc(+e.dataset.h); },
   'loc-stop': stopLoc,
+  'loc-auto'(e) {
+    if (e.checked) { if (!navigator.geolocation) { e.checked = false; return toast('Peranti ini tidak menyokong lokasi.'); } save('tk-loc-auto', '1'); save('tk-loc-until', null); if (locWatch === null) beginWatch(); else pingNow(); toast('Lokasi akan dikongsi setiap kali aplikasi dibuka'); }
+    else stopLoc();
+    schedule(); if (sheet().open && $('#pname', sheet())) refreshSettings();
+  },
   copy(e) { navigator.clipboard?.writeText(e.dataset.v).then(() => toast('Disalin'), () => toast('Tidak dapat menyalin. Salin secara manual.')); },
   async 'invite-new'() { try { await store.regenerateInvite(); toast('Kod baharu dijana. Kod lama tidak lagi sah.'); } catch (x) { toast(x.message); } },
   settings: openSettings,
-  theme(e) { setTheme(e.dataset.k); openSettings(); },
+  theme(e) { setTheme(e.dataset.k); refreshSettings(); },
+  size(e) { setSize(e.dataset.k); refreshSettings(); },
+  week(e) { save('tk-week', e.dataset.k); refreshSettings(); render(); },
   async push() { try { await store.enablePush(); toast('Notifikasi diaktifkan'); openSettings(); } catch (x) { toast(x.message); } },
   async install() { installEvt.prompt(); installEvt = null; closeSheet(); },
   export() { const { state, members, family } = store; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), family, members, ...state }, null, 2)], { type: 'application/json' })); a.download = `tulip-kayu-${ymd(Date.now())}.json`; a.click(); URL.revokeObjectURL(a.href); },
@@ -384,18 +430,19 @@ const actions = {
   async google() { try { await store.signInGoogle(); } catch (x) { ui.gateErr = x.message; render(); } },
 };
 const commitmentDateFor = (c, ym) => { const [y, m] = ym.split('-').map(Number); return new Date(y, m - 1, Math.min(Number(c.dueDay) || 1, daysInMonth(y, m - 1))); };
-function stopLocQuiet() { if (locWatch !== null) { navigator.geolocation.clearWatch(locWatch); locWatch = null; store.clearLocation(); } save('tk-loc', null); save('tk-loc-until', null); }
+function stopLocQuiet() { if (locWatch !== null) { navigator.geolocation.clearWatch(locWatch); clearInterval(locBeat); locWatch = null; store.clearLocation(); } ['tk-loc', 'tk-loc-until', 'tk-loc-auto'].forEach(k => save(k, null)); }
 
 document.addEventListener('click', ev => {
   const e = ev.target.closest('[data-act]'); if (!e) return;
-  const a = actions[e.dataset.act]; if (a) { ev.preventDefault(); a(e); }
+  const a = actions[e.dataset.act]; if (a) { if (e.type !== 'checkbox') ev.preventDefault(); a(e); }
 });
 $('#sheet').addEventListener('click', ev => { if (ev.target === ev.currentTarget) closeSheet(); });
 document.addEventListener('submit', async ev => {
   const f = ev.target; ev.preventDefault();
   if (f.dataset.form) return submitForm(f);
   if (f.dataset.additem) { const l = store.find('lists', f.dataset.additem), text = f.text.value.trim(); if (text) { store.update('lists', l.id, { items: [...(l.items || []), { id: Math.random().toString(36).slice(2, 9), text, done: false }] }); ui.focusAdd = true; } return; }
-  if ('profile' in f.dataset) { await store.updateProfile(f.name.value.trim()); toast('Nama disimpan'); return; }
+  if ('profile' in f.dataset) { const n = f.name.value.trim(); if (!n) return; try { await store.updateProfile(n, f.color.value); toast('Profil disimpan'); refreshSettings(); } catch (x) { toast('Gagal menyimpan profil: ' + x.message); } return; }
+  if ('famname' in f.dataset) { const n = f.name.value.trim(); if (!n) return; try { await store.updateFamilyName(n); toast('Nama keluarga disimpan'); } catch (x) { toast('Gagal menyimpan: ' + x.message); } return; }
   if ('budget' in f.dataset) {
     new FormData(f).forEach((v, c) => {
       const cur = store.state.budgets.find(b => b.category === c), n = Number(v || 0);
@@ -459,9 +506,9 @@ function render(top) {
   const draft = typing?.value;
   root.innerHTML = `${store.demo ? '<div class="demo">Mod Demo: data contoh dalam pelayar ini sahaja</div>' : ''}
     ${store.loadError ? `<div class="demo" role="alert">Data tidak dapat dimuatkan: ${esc(store.loadError)}</div>` : ''}
-    ${locWatch !== null && ui.tab !== 'family' ? '<div class="share-bar">Lokasi anda sedang dikongsi <button data-act="loc-stop">Berhenti</button></div>' : ''}
+    ${locWatch !== null && !locAuto() && ui.tab !== 'family' ? '<div class="share-bar">Lokasi anda sedang dikongsi <button data-act="loc-stop">Berhenti</button></div>' : ''}
     <div class="shell">
-      <header class="top"><div class="top-in"><h1>${TITLE[ui.tab] || esc(store.family?.name || 'Tulip Kayu')}</h1><button data-act="settings" aria-label="Tetapan">${member(store.user.uid) ? avatar(store.user.uid, false) : `<span class="avatar" style="background:var(--wood)">${esc(initials(store.user.name))}</span>`}</button></div></header>
+      <header class="top"><div class="top-in"><h1>${TITLE[ui.tab] || esc(store.family?.name || 'Tulip Kayu')}</h1><div class="top-acts"><button class="iconbtn" data-act="settings" aria-label="Tetapan">${ico('gear')}</button><button data-act="settings" aria-label="Profil dan tetapan">${member(store.user.uid) ? avatar(store.user.uid, false) : `<span class="avatar" style="background:var(--wood)">${esc(initials(store.user.name))}</span>`}</button></div></div></header>
       <main>${VIEWS[ui.tab]()}</main>
     </div>
     <button class="fab" data-act="fab" aria-label="Tambah">${ico('plus')}</button>
@@ -489,6 +536,5 @@ addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = 
   if (m && FORMS[m[1]] && store.phase === 'ready') { history.replaceState(null, '', location.pathname); openForm(m[1]); }
   setInterval(checkDue, 30000); setTimeout(checkDue, 1500);
   setInterval(() => { if (store.phase === 'ready' && !sheet().open) schedule(); }, 60000);
-  const resume = () => { if (load('tk-loc') && locWatch === null && store.phase === 'ready' && !store.demo) { if (locUntil() && Date.now() > locUntil()) { save('tk-loc', null); save('tk-loc-until', null); store.clearLocation(); } else beginWatch(); schedule(); } };
-  store.on(resume);
+  store.on(resumeLoc); resumeLoc();
 })();
