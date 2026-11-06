@@ -1,7 +1,7 @@
 // Isi nilai ini selepas mencipta projek Firebase (lihat README.md, Langkah 1–4).
 // Selagi apiKey kosong, aplikasi berjalan dalam Mod Demo: data disimpan dalam pelayar ini sahaja.
 export const firebaseConfig = {
- apiKey: "AIzaSyDtufbvFjMrgYsAs7sZibqeYmSakgHJ8NA",
+  apiKey: "AIzaSyDtufbvFjMrgYsAs7sZibqeYmSakgHJ8NA",
   authDomain: "tulip-kayu-apps.firebaseapp.com",
   projectId: "tulip-kayu-apps",
   storageBucket: "tulip-kayu-apps.firebasestorage.app",

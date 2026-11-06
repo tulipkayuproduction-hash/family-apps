@@ -1,5 +1,5 @@
 // Service worker: cache aplikasi untuk luar talian + papar notifikasi push FCM.
-const VERSION = 'tk-v3';
+const VERSION = 'tk-v1';
 const SHELL = ['./','./index.html','./manifest.webmanifest','./css/app.css','./js/app.js','./js/logic.js','./js/store.js','./js/config.js',
   './vendor/firebase.js','./vendor/leaflet.js','./vendor/leaflet.css','./vendor/fonts/figtree.woff2','./vendor/fonts/bricolage.woff2','./icons/icon-192.png'];
 
