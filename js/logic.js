@@ -67,7 +67,21 @@ export function agenda(s, from, to) {
   const out = [];
   (s.events || []).forEach(e => {
     if (!e.date) return;
-    occurrences(combine(e.date, e.time), e.repeat, from, to).forEach(t => out.push({ t, allDay: !e.time, kind: 'events', id: e.id, title: e.title, sub: [e.time && e.endTime ? `hingga ${e.endTime}` : '', e.location].filter(Boolean).join(', '), who: e.member }));
+    const span = eventSpan(e), base = parseYmd(e.date).getTime();
+    // Acara berbilang hari dipaparkan pada setiap hari dari tarikh mula hingga tamat.
+    occurrences(base, e.repeat, addDays(from, -span), to).forEach(s0 => {
+      for (let i = 0; i <= span; i++) {
+        const day = addDays(s0, i);
+        if (addDays(day, 1) - 1 < from || day > to) continue;
+        const first = i === 0, last = i === span, timed = first && !!e.time;
+        const sub = [];
+        if (span) sub.push(`Hari ${i + 1} daripada ${span + 1}`);
+        if (!span && e.time && e.endTime) sub.push(`hingga ${e.endTime}`);
+        if (span && last && e.endTime) sub.push(`tamat ${e.endTime}`);
+        if (e.location) sub.push(e.location);
+        out.push({ t: timed ? combine(ymd(day), e.time) : day, allDay: !timed, kind: 'events', id: e.id, title: e.title, sub: sub.join(', '), who: e.member });
+      }
+    });
   });
   (s.tasks || []).forEach(x => {
     if (x.done || !x.due) return;
@@ -93,6 +107,12 @@ export function agenda(s, from, to) {
     occurrences(parseYmd(d.date).getTime(), d.yearly ? 'yearly' : 'none', from, to).forEach(t => out.push({ t, allDay: true, kind: 'dates', id: d.id, title: d.title, sub: 'Tarikh penting' }));
   });
   return out.sort((a, b) => (startOfDay(a.t) - startOfDay(b.t)) || (b.allDay - a.allDay) || (a.t - b.t));
+}
+
+/** Bilangan hari tambahan selepas tarikh mula (0 = acara sehari). */
+export function eventSpan(e) {
+  if (!e.endDate || !e.date || e.endDate <= e.date) return 0;
+  return Math.round((parseYmd(e.endDate) - parseYmd(e.date)) / DAY);
 }
 
 export function taskBuckets(tasks, now = Date.now()) {
