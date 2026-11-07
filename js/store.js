@@ -78,6 +78,7 @@ class DemoStore extends Base {
   clearLocation() { this.locations = this.locations.filter(l => l.uid !== 'u1'); this.emit(); }
   async updateProfile(name, color) { this.user.name = name; Object.assign(this.members[0], { name, ...(color ? { color } : {}) }); this.saveProf(); }
   async updateFamilyName(name) { this.family.name = name; this.saveProf(); }
+  async updateMember(patch) { Object.assign(this.members[0], patch); this.emit(); }
   saveProf() { try { localStorage.setItem('tk-demo-prof', JSON.stringify({ name: this.user.name, color: this.members[0].color, family: this.family.name })); } catch {} this.emit(); }
   async regenerateInvite() { return this.family.inviteCode; }
   async enablePush() { throw new Error('Notifikasi push memerlukan Firebase. Sambungkan Firebase dahulu.'); }
@@ -209,6 +210,7 @@ class FirebaseStore extends Base {
     if (old) await f.deleteDoc(f.doc(this.db, 'invites', old));
     return code;
   }
+  async updateMember(patch) { await this.fb.updateDoc(this.fb.doc(this.db, 'families', this.fid, 'members', this.user.uid), patch); }
   async updateFamilyName(name) { await this.fb.updateDoc(this.fb.doc(this.db, 'families', this.fid), { name }); }
   async updateProfile(name, color) {
     const f = this.fb, uid = this.user.uid;

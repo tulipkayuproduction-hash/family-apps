@@ -389,6 +389,7 @@ function pushStatus(perm) {
       ${store.demo ? '' : `<dt>Akaun</dt><dd>${esc(store.user.email || store.user.name)}</dd><dt>ID keluarga</dt><dd style="overflow-wrap:anywhere"><code>${esc(store.family?.id)}</code></dd>`}
     </dl>
     ${ui.pushErr ? `<p class="err" role="alert">${esc(ui.pushErr)}</p>` : ''}
+    <label class="tog" for="notify-new"><input type="checkbox" id="notify-new" data-act="notify-new" ${member(store.user.uid)?.notifyNew !== false ? 'checked' : ''}><span>Beritahu saya apabila ahli lain menambah acara, tugasan, peringatan atau nota baharu</span></label>
     ${store.demo ? '' : '<p class="small muted">ID keluarga di atas mesti sama dengan <code>FAMILY_ID</code> dalam Apps Script.</p>'}
     <div class="chips"><button class="btn sm" data-act="push">${mine ? 'Daftar semula peranti ini' : 'Aktifkan notifikasi'}</button>${perm === 'granted' ? '<button class="btn sm ghost" data-act="push-local">Uji pada peranti ini</button>' : ''}</div>`;
 }
@@ -462,6 +463,11 @@ const actions = {
     try { await store.enablePush(); save('tk-push', JSON.stringify({ uid: store.user.uid, at: Date.now() })); toast('Peranti ini berdaftar untuk notifikasi'); }
     catch (x) { ui.pushErr = pushMsg(x); }
     refreshSettings();
+  },
+  async 'notify-new'(e) {
+    const on = e.checked;
+    try { await store.updateMember({ notifyNew: on }); toast(on ? 'Anda akan diberitahu tentang perkara baharu' : 'Notifikasi perkara baharu dimatikan'); }
+    catch (x) { e.checked = !on; toast('Gagal menyimpan: ' + x.message); }
   },
   async 'push-local'() {
     try { const reg = await navigator.serviceWorker.ready; await reg.showNotification('Tulip Kayu', { body: 'Peranti ini boleh memaparkan notifikasi.', icon: 'icons/icon-192.png', tag: 'uji-tempatan' }); toast('Notifikasi ujian dihantar ke peranti ini'); }
